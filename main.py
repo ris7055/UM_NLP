@@ -1,3 +1,5 @@
+import glob
+import os
 import random
 import math
 
@@ -32,18 +34,31 @@ def astar(start, start_floor, goal, goal_floor):
             # Sort the list by the heuristic value and get the coordinate with the smallest heuristic value
             nearest = min(nearest_coords, key=lambda x: x[1])
         else:
+            goal_block = goal_floor[0]
+            to_next_block_list = []
             # If goal_floor is not in next_position, find the nearest next coordinate
             for transition_key, transition_value in current_transitions.items():
+                current_block, current_floor = transition_key[0], int(transition_key[2])
                 for current_coord, next_dict in transition_value.items():
                     for coord, next_position, next_coord in zip(eval(current_coord), next_dict.keys(), next_dict.values()):
+                        # Check if goal_floor is bottom or top
+                        next_block, next_floor = next_position[0], int(next_position[2])
+                        if goal_block != current_block:
+                            if next_block == goal_block:
+                                print("got")
+                                to_next_block_list.append((next_coord, heuristic(start, coord), next_position[:3], coord, transition_key))
+                            else:
+                                if int(goal_floor[-1]) < current_floor < next_floor:
+                                    # If the goal is at a lower floor and the next floor is above the current floor,
+                                    # ignore this transition
+                                    continue
                         nearest_coords.append((next_coord, heuristic(start, coord), next_position[:3], coord, transition_key))
-                        # Check if goal_floor is bottom floor or not
-                        #if goal_floor == 'bgf' and start_floor == 'agf' and 'f1' in next_position:
-                            #continue
 
+            if len(to_next_block_list) > 0:
+                nearest_coords = to_next_block_list
             # Sort the list by the heuristic value and get the coordinate with the smallest heuristic value
             nearest = min(nearest_coords, key=lambda x: x[1])
-
+        print(eval(nearest[0])[0], nearest[2], goal, goal_floor)
         astar(eval(nearest[0])[0], nearest[2], goal, goal_floor)
         goal = nearest[3]
         goal_floor = nearest[4][:3]
@@ -67,7 +82,6 @@ def astar(start, start_floor, goal, goal_floor):
                 current, current_floor = came_from[(current, current_floor)]
             path.reverse()
             paths.append(path)
-            #print(len(paths),paths)
             return
 
         open_set.remove((current, current_floor))
@@ -250,7 +264,7 @@ def main():
     mazes = {
         'af0': get_maze('agf'),
         'af1': get_maze('af1'),
-        'aff': get_maze('af2'),
+        'af2': get_maze('af2'),
         'bf0': get_maze('bgf'),
         'bf1': get_maze('bf1'),
         'bf2': get_maze('bf2')
@@ -264,8 +278,13 @@ def main():
     paths = []
     astar(start_coordinate, start_floor_plan, nearest_goal, destination_floor_plan)
 
+    files = glob.glob('path/*')
+    for f in files:
+        os.remove(f)
+
     font = pygame.font.SysFont(None, 5*TILE_SIZE)
     counter = len(paths)
+
     for path in paths:
         maze_floor = path[0][1]
         surface = pygame.Surface((len(mazes[maze_floor][0]) * TILE_SIZE, len(mazes[maze_floor]) * TILE_SIZE))

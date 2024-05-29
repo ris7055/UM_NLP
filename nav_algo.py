@@ -2,7 +2,9 @@ import glob
 import os
 import random
 import math
+import re
 import numpy as np
+import pandas as pd
 import pygame
 import csv
 import heapq
@@ -236,7 +238,7 @@ def draw_arrow(surface, color, start, end):
     pygame.draw.polygon(surface, color, ((end[0]+5*math.sin(math.radians(rotation)), end[1]+5*math.cos(math.radians(rotation))), (end[0]+5*math.sin(math.radians(rotation-120)), end[1]+5*math.cos(math.radians(rotation-120))), (end[0]+5*math.sin(math.radians(rotation+120)), end[1]+5*math.cos(math.radians(rotation+120)))))
 
 
-def main():
+def main(start, destination, is_OKU):
     global width, height, TILE_SIZE, mazes, transitions, paths
     pygame.init()
     # Set the dimensions of each tile
@@ -248,46 +250,6 @@ def main():
                                [room['color code'] for room in room_facilities_dict.values()])
     LABEL_MAP = create_label_map([room['label'] for room in room_facilities_dict.values()],
                                  room_facilities_dict.keys())
-
-    destination = input("Destination?['Cancel' to stop]: ").lower().strip()
-    while True:
-        dest_possible = [key for key in room_facilities_dict if destination in key]
-        if destination == 'Cancel':
-            return
-        if len(dest_possible) == 0:
-            print("Invalid Destination")
-            destination = input("Destination?['Cancel' to stop]: ").lower()
-        elif len(dest_possible) > 1:
-            [print(key) for key in dest_possible]
-            destination = input("Which location do you mean?")
-            if destination in dest_possible:
-                break
-        else:
-            destination = dest_possible[0]
-            break
-
-    start = (input("Start Location?['Cancel' to stop]: ")).lower().strip()
-    while True:
-        start_possible = [key for key in room_facilities_dict if start in key]
-        if start == 'Cancel':
-            return
-        if len(start_possible) == 0:
-            print("Invalid Start Position")
-            start = (input("Start Location?['Cancel' to stop]: ")).lower()
-        elif len(start_possible) > 1:
-            [print(key) for key in start_possible]
-            start = input("Which location do you mean?")
-            if start in start_possible:
-                break
-        else:
-            start = start_possible[0]
-            break
-
-    is_OKU = (input("Do you identify as a person with a disability? (Y/y or N/n):")).lower().strip()
-    if is_OKU == 'y':
-        is_OKU = True
-    else:
-        is_OKU = False
 
     start_floor_plan = start[:3]
     start_coordinate = random.choice(ast.literal_eval(room_facilities_dict[start]['coordinate']))
@@ -316,15 +278,18 @@ def main():
     paths = []
     astar(start_coordinate, start_floor_plan, nearest_goal, destination_floor_plan, is_OKU)
 
-    files = glob.glob('path/*')
+    files = glob.glob('static/*')
     for f in files:
-        os.remove(f)
+        filename = os.path.basename(f)
+        if re.match(r'^\d+\.png$', filename):
+            os.remove(f)
 
     font = pygame.font.SysFont(None, 5*TILE_SIZE)
     counter = len(paths)
-
+    each_floor_data = []
     for path in paths:
         maze_floor = path[0][1]
+        each_floor_data.append(maze_floor)
         surface = pygame.Surface((len(mazes[maze_floor][0]) * TILE_SIZE, len(mazes[maze_floor]) * TILE_SIZE))
         # Draw the maze
         for y, row in enumerate(mazes[maze_floor]):
@@ -361,8 +326,6 @@ def main():
                     surface.blit(text, (int(center_x), int(center_y)))
                     t_count += 1
 
-        pygame.image.save(surface, 'path/'+f'{counter}.png')
+        pygame.image.save(surface, 'static/'+f'{counter}.png')
         counter -= 1
-
-
-main()
+    return list(reversed(each_floor_data))

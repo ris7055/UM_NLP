@@ -105,6 +105,8 @@ def get_response(userText):
             except ValueError:
                 response_list.append(
                     "I am sorry, this location is invalid. Can u say again where are you going to?")
+        else:
+            response_list.append("I am sorry. I cannot understand what you mean.")
     elif userText.lower().strip() == "return":
         session['questions_asked'] = 0
         session['nav_ans'] = []

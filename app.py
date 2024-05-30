@@ -166,15 +166,15 @@ def get_response(userText):
                     if counter == 0 and counter != len(floor_data)-1:
                         response_list.append(connections_words[counter]+", you are at Block "+\
                                              floor_data[counter][0].upper()+" Floor "+\
-                                             floor_data[counter][:-2].upper()+".")
+                                             floor_data[counter][-2:].upper()+".")
                     elif counter < len(floor_data)-1:
                         response_list.append(connections_words[counter]+", go to Block "+\
                                              floor_data[counter][0].upper()+" Floor "+\
-                                             floor_data[counter][:-2].upper()+".")
+                                             floor_data[counter][-2:].upper()+".")
                     else:
                         response_list.append(connections_words[counter]+" you are at Block "+\
                                              floor_data[counter][0].upper()+\
-                                             " Floor "+floor_data[counter][:-2].upper()+\
+                                             " Floor "+floor_data[counter][-2:].upper()+\
                                              ", Your destination is on this floor.")
                     counter += 1
                 response_list.append(data_url)

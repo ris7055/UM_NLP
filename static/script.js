@@ -297,6 +297,21 @@ function botResponse(userInput){
                 if(isDataUrl(item)){
                     var img = document.createElement("IMG");
                     img.src = item;
+                    img.style.cursor = "pointer"
+                    img.onclick = (function(i) {
+                        return function() {
+                            var modal = document.createElement("DIV");
+                            modal.className = "modal";
+                            var modalContent = document.createElement("IMG");
+                            modalContent.className = "modal-content";
+                            modalContent.src = i;
+                            modal.appendChild(modalContent);
+                            document.body.appendChild(modal);
+                            modal.onclick = function() {
+                                document.body.removeChild(modal);
+                            }
+                        };
+                    })(item);
                     contentWrapper.appendChild(img);
                 }else {
                     var content_span = document.createElement("SPAN");

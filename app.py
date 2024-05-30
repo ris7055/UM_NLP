@@ -10,53 +10,118 @@ app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
 #Session(app)
 
-# Read the Database
-map_database = pd.read_csv('Database - Database.csv')
-# Rename 'Room/Facilities' to 'room'
-map_database = map_database.rename(columns={'Room/Facilities': 'room'})
-# Select only the columns you want
-map_database = map_database[['Faculty', 'Block', 'Floor', 'room']]
-# Convert column names to lowercase
-map_database.columns = map_database.columns.str.lower()
-# Convert the DataFrame to JSON
-map_data = map_database.to_dict(orient='records')
-
-# Read the Database
-event_database = pd.read_csv('Database.csv')
-# Convert column names to lowercase
-event_database.columns = event_database.columns.str.lower()
-# Convert the DataFrame to JSON
-event_data = event_database.to_dict(orient='records')
 
 connections_words = ["First", "Next", "Then", "After that", "Lastly"]
 session = {}
 
 
+def read_map_data():
+    # Read the Database
+    map_database = pd.read_csv('Database - Database.csv')
+    # Rename 'Room/Facilities' to 'room'
+    map_database = map_database.rename(columns={'Room/Facilities': 'room'})
+    # Select only the columns you want
+    map_database = map_database[['Faculty', 'Block', 'Floor', 'room']]
+    # Convert column names to lowercase
+    map_database.columns = map_database.columns.str.lower()
+    # Convert the DataFrame to JSON
+    map_data = map_database.to_dict(orient='records')
+    return map_data
+
+
+def read_event_data():
+    # Read the Database
+    event_database = pd.read_csv('Database.csv')
+    # Convert column names to lowercase
+    event_database.columns = event_database.columns.str.lower()
+    # Convert the DataFrame to JSON
+    event_data = event_database.to_dict(orient='records')
+    return event_data
+
+
+def read_course_data():
+    room_mapping = {
+        'DK': 'Lecture Hall',
+        'MM': 'Micro Lab',
+        'MLANJUTAN': 'Postgraduate Lab',
+        'M STROU': 'Stroustrup Lab 1',
+        'B KULIAH2': 'Lecture Room 2',
+        'B KULIAH': 'Lecture Room',
+        'M CCNA': 'CCNA Lab',
+        'BT': 'Tutorial Room'
+    }
+
+    # Read the Database
+    course_database = pd.read_csv('Database - STU_MVT4.csv', skiprows=11)
+    course_database = course_database.loc[:, ~course_database.columns.str.startswith('Unnamed')]
+    course_database = course_database.drop(['Target', 'Activity', 'Weeks'], axis=1)
+    course_database['Module Code'] = course_database['Module Code'].ffill()
+    for column in course_database.columns:
+        course_database[column] = course_database.groupby('Module Code')[column].apply(lambda x: x.ffill()).reset_index(
+            drop=True)
+    course_database = course_database.dropna()
+    course_database = course_database[course_database['Module Code'].str.startswith('WI')]
+
+    course_database['Faculty'] = course_database['Room'].apply(
+        lambda x: 'Computer Science and Information Technology' if 'FSKTM' in x else '')
+
+    # Replace the values in the 'Room' column
+    for key, value in room_mapping.items():
+        course_database['Room'] = course_database['Room'].str.replace(key, value, regex=True)
+
+    # Remove 'FSKTM' from the 'Room' column
+    course_database['Room'] = course_database['Room'].str.replace('FSKTM', '')
+    # Convert column names to lowercase
+    course_database.columns = course_database.columns.str.lower()
+
+    # Replace unescaped double quotes in the 'tutor' column
+    course_database['tutor'] = course_database['tutor'].str.replace("\'", "\\'")
+    course_database = course_database.drop("mav name", axis=1)
+    # Convert the DataFrame to JSON
+    course_data = course_database.to_dict(orient='records')
+    return course_data
+
+
+map_data = read_map_data()
+event_data = read_event_data()
+course_data = read_course_data()
+
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     data = {"map_data": map_data,
-            "event_data": event_data}
+            "event_data": event_data,
+            "course_data": course_data}
     return render_template('index.html', data=data)
 
 
 def location_exists(faculty, block, floor, room):
-    # Remove the "Block " prefix from the block variable
-    if block.startswith("Block "):
-        block = block[6:]
+    if block is None and floor is None:
+        # Iterate over each location in the list
+        for location in map_data:
+            # Check if the department, block, floor, and room match the user's input
+            if location["room"].lower().strip() == room.lower().strip():
+                return True
+        return False
+        pass
+    else:
+        # Remove the "Block " prefix from the block variable
+        if block.startswith("Block "):
+            block = block[6:]
 
-    # Remove the "Floor " prefix from the floor variable
-    if floor.startswith("Floor "):
-        floor = floor[6:]
+        # Remove the "Floor " prefix from the floor variable
+        if floor.startswith("Floor "):
+            floor = floor[6:]
 
-    # Iterate over each location in the list
-    for location in map_data:
-        # Check if the department, block, floor, and room match the user's input
-        if (location["faculty"] == faculty.strip() and
-                location["block"] == block.strip() and
-                location["floor"] == floor.strip() and
-                location["room"] == room.strip()):
-            return True
-    return False
+        # Iterate over each location in the list
+        for location in map_data:
+            # Check if the department, block, floor, and room match the user's input
+            if (location["faculty"] == faculty.strip() and
+                    location["block"] == block.strip() and
+                    location["floor"] == floor.strip() and
+                    location["room"] == room.strip()):
+                return True
+        return False
 
 
 def event_exists(name):
@@ -67,6 +132,12 @@ def event_exists(name):
             return True, event
     return False, None
 
+
+def get_block_and_floor(room):
+    for data in map_data:
+        if data['room'].lower().strip() == room.lower().strip():
+            return data['block'].lower().strip(), data['floor'].lower().strip()
+    return None, None
 
 
 def get_response(userText):
@@ -91,8 +162,11 @@ def get_response(userText):
             session['current'] = 1
             response_list.append("I am happy that I can help you in events. \nWhat events are u interest in?\n You "
                                  "can select one from the selections below.")
+        elif userText.lower() == "course":
+            session['current'] = 2
+            response_list.append("I am happy that I can help you in course. \nWhat course u wish to know more?\n"
+                                 "You can select one from the selections below.")
         elif session['current'] == 0:
-            session['questions_asked'] == 1
             try:
                 faculty, block, floor, room = userText.split("\n")
                 if location_exists(faculty, block, floor, room):
@@ -105,6 +179,21 @@ def get_response(userText):
             except ValueError:
                 response_list.append(
                     "I am sorry, this location is invalid. Can u say again where are you going to?")
+        elif session['current'] == 2:
+            # Split the user's input
+            try:
+                course, day, tutor, room = userText.split("\n")
+                if location_exists(None, None, None, room):
+                    session['questions_asked'] += 1
+                    block, floor = get_block_and_floor(room)
+                    session['nav_ans'].append({"block": block, "floor": floor, "room": room})
+                    response_list.append("Great. I can bring u there. Where are you now?")
+                else:
+                    response_list.append(
+                        "I am sorry, this location/course is invalid. Can u say again which class are you going to?")
+            except ValueError:
+                response_list.append(
+                    "I am sorry, this location/course is invalid. Can u say again which class are you going to?")
         else:
             session['questions_asked'] -= 1
             response_list.append("I am sorry. I cannot understand what you mean.")
@@ -139,15 +228,47 @@ def get_response(userText):
             else:
                 response_list.append("I am sorry, this event not exist. You can check out the events from selection "
                                      "below.")
+        elif session['current'] == 2:
+            # Split the user's input
+            try:
+                course, day, tutor, room = userText.split("\n")
+                if location_exists(None, None, None, room):
+                    session['questions_asked'] += 1
+                    block, floor = get_block_and_floor(room)
+                    session['nav_ans'].append({"block": block, "floor": floor, "room": room})
+                    response_list.append("Great. I can bring u there. Where are you now?")
+                else:
+                    response_list.append(
+                        "I am sorry, this location/course is invalid. Can u say again which class are you going to?")
+            except ValueError:
+                response_list.append(
+                    "I am sorry, this location/course is invalid. Can u say again which class are you going to?")
     elif session['questions_asked'] == 2:
-        # Split the user's input into department, block, floor, and room
-        faculty, block, floor, room = userText.split("\n")
-        if location_exists(faculty, block, floor, room):
-            session['questions_asked'] += 1
-            session['nav_ans'].append({"faculty": faculty, "block": block, "floor": floor, "room": room})
-            response_list.append("Do you identify as a person with a disability? (if yes, input y/yes):")
-        else:
-            response_list.append("I am sorry, this location is invalid. Can u say again where are you starting from?")
+        if session['current'] == 0:
+            # Split the user's input into department, block, floor, and room
+            faculty, block, floor, room = userText.split("\n")
+            if location_exists(faculty, block, floor, room):
+                session['questions_asked'] += 1
+                session['nav_ans'].append({"faculty": faculty, "block": block, "floor": floor, "room": room})
+                response_list.append("Do you identify as a person with a disability? (if yes, input y/yes):")
+            else:
+                response_list.append("I am sorry, this location is invalid. Can u say again where are you starting "
+                                     "from?")
+        elif session['current'] == 2:
+            # Split the user's input
+            try:
+                # Split the user's input into department, block, floor, and room
+                faculty, block, floor, room = userText.split("\n")
+                if location_exists(faculty, block, floor, room):
+                    session['questions_asked'] += 1
+                    session['nav_ans'].append({"faculty": faculty, "block": block, "floor": floor, "room": room})
+                    response_list.append("Do you identify as a person with a disability? (if yes, input y/yes):")
+                else:
+                    response_list.append(
+                        "I am sorry, this location/course is invalid. Can u say again which class are you going to?")
+            except ValueError:
+                response_list.append(
+                    "I am sorry, this location/course is invalid. Can u say again which class are you going to?")
     elif session['questions_asked'] == 3:
         is_OKU = userText.lower() in ['y', 'yes']
         session['nav_ans'].append(is_OKU)
@@ -189,13 +310,18 @@ def get_response(userText):
 
 def get_nav_image():
     destination = session['nav_ans'][0]
+
     # Remove the "Block " prefix from the block variable
     if destination["block"].startswith("Block "):
         block = destination["block"][6:].lower().strip()
+    else:
+        block = destination["block"]
 
     # Remove the "Floor " prefix from the floor variable
     if destination["floor"].startswith("Floor "):
         floor = destination["floor"][6:].lower().strip()
+    else:
+        floor = destination["floor"]
 
     room = destination["room"].lower().strip()
 
@@ -205,10 +331,14 @@ def get_nav_image():
     # Remove the "Block " prefix from the block variable
     if start["block"].startswith("Block "):
         block = start["block"][6:].lower().strip()
+    else:
+        block = start["block"]
 
     # Remove the "Floor " prefix from the floor variable
     if start["floor"].startswith("Floor "):
         floor = start["floor"][6:].lower().strip()
+    else:
+        floor = start["floor"]
 
     room = start["room"].lower().strip()
 
@@ -218,6 +348,10 @@ def get_nav_image():
 
     return n.main(start, destination, is_OKU)
 
+
+@app.route('/get_stored_data', methods=['GET'])
+def get_stored_data():
+    return {"nav_ans": session['nav_ans'], "current": session['current']}
 
 
 @app.route("/get", methods=['GET', 'POST'])

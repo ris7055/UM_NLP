@@ -9,6 +9,9 @@ var resizeHandle = document.getElementById("resize_handler");
 
 var nav_options = JSON.parse(nav)
 var events_options = JSON.parse(eve)
+course = course.replaceAll("\n", "\\n");
+course = course.replaceAll("\'", "\"");
+var course_options = JSON.parse(course)
 
 function loadNavOptions(){
     nav_options.sort((a, b) => {
@@ -134,6 +137,176 @@ function filterNavOptions() {
             }
         });
     }
+}
+
+function filterCourseOptions() {
+    // Get the current value of the text field
+    let filterText = chatBoxTextField.value.toLowerCase();
+
+    // Initially hide all details elements and course buttons
+    document.querySelectorAll('details, .course-button').forEach(element => {
+        element.style.display = 'none';
+    });
+
+    // Filter and show matching faculties, modules, and courses
+    document.querySelectorAll('details').forEach(details => {
+        // Check if the current details element or any of its children match the filter text
+        let textContent = details.textContent.toLowerCase();
+        let summaryText = details.querySelector('summary').textContent.toLowerCase();
+
+        // Show the details if the text content includes the filter text and it's a course button
+        if (textContent.includes(filterText)) {
+            details.style.display = 'block';
+        }
+
+        if(details.style.display === 'block'){
+            // Filter and show matching course buttons
+            details.querySelectorAll('.course-button').forEach(button => {
+                // Check if the current button's text matches the filter text
+                let buttonText = button.textContent.toLowerCase();
+
+                // Show the button if the button text includes the filter text
+                if (buttonText.includes(filterText)) {
+                    button.style.display = 'block';
+                    button.closest('details').style.display = 'block';
+                    button.closest('details').open = true;
+                    button.closest('details').parentElement.open = true;
+                    button.closest('details').parentElement.parentElement.open = true;
+                } else {
+                    if(summaryText.includes(filterText)){
+                        button.style.display = 'block';
+                        button.closest('details').style.display = 'block';
+                        button.closest('details').open = true;
+                        button.closest('details').parentElement.open = true;
+                        button.closest('details').parentElement.parentElement.open = true;
+                    }
+                }
+            });
+        }
+
+        // Show the details if the summary text includes the filter text
+        if (summaryText.includes(filterText)) {
+            details.style.display = 'block';
+            showAllChildren(details);
+        }
+    });
+
+    // Helper function to show all children details and buttons
+    function showAllChildren(details) {
+        Array.from(details.children).forEach(child => {
+            if (child.tagName.toLowerCase() === 'details') {
+                child.style.display = 'block';
+                //showAllChildren(child); // Recursively show children
+            } else if (child.classList.contains('course-button')) {
+                child.style.display = 'block'; // Show course buttons
+            }
+        });
+    }
+}
+
+function loadCourseOptions(){
+    course_options.sort(function(a, b) {
+        // Sort by module code
+        var moduleCodeComparison = a["module code"].localeCompare(b["module code"]);
+        if (moduleCodeComparison != 0) return moduleCodeComparison;
+
+        // If module code is the same, sort by occurrence
+        return a["occurrence"] - b["occurrence"];
+    });
+    displayCourseOptions(course_options)
+}
+
+function displayCourseOptions(OPTIONS){
+    // Display the sorted options in the chatbox-options div
+    optionsContainer.style.display = 'block';
+
+    chatBoxTextField.oninput = filterCourseOptions;
+
+    optionsContainer.innerHTML = ''; // Clear existing options
+
+    let currentFaculty = '';
+    let currentModuleCode = '';
+    let html = '';
+    let faculties = {};
+
+    // Group occurrences by faculty, module code and occurrence number
+    course_options.forEach(option => {
+        let facultyKey = option["faculty"];
+        let moduleKey = option["module code"];
+        let occurrenceKey = option["occurrence"];
+        let key = facultyKey + '-' + moduleKey + '-' + occurrenceKey;
+
+        if (!faculties[facultyKey]) {
+            faculties[facultyKey] = {};
+        }
+
+        if (!faculties[facultyKey][moduleKey]) {
+            faculties[facultyKey][moduleKey] = {
+                "module code": moduleKey,
+                "module name": option["module name"],
+                "occurrences": {}
+            };
+        }
+
+        if (!faculties[facultyKey][moduleKey].occurrences[occurrenceKey]) {
+            faculties[facultyKey][moduleKey].occurrences[occurrenceKey] = {
+                "occurrence": occurrenceKey,
+                "period slot": option["period slot"],
+                "academic year": option["academic year"],
+                "location": option["location"],
+                "sessions": []
+            };
+        }
+
+        faculties[facultyKey][moduleKey].occurrences[occurrenceKey].sessions.push({
+            "tutor": option["tutor"],
+            "dayStartDuration": option["day / start duration "].replace("\\n", "\n"),
+            "room": option["room"]
+        });
+    });
+
+    // Create the HTML for each faculty
+    for (let faculty in faculties) {
+        html += `<details open><summary>${faculty}</summary>`;
+        let modules = faculties[faculty];
+        for (let moduleCode in modules) {
+            let module = modules[moduleCode];
+            html += `<details open><summary>${module["module code"]} - ${module["module name"]}</summary>`;
+            let occurrences = module.occurrences;
+            for (let occurrence in occurrences) {
+                let group = occurrences[occurrence];
+                html += `<details open><summary>Occurrence ${group["occurrence"]}</summary>`;
+                let tutors = {};
+                group.sessions.forEach(session => {
+                    if (!tutors[session.tutor]) {
+                        tutors[session.tutor] = [];
+                    }
+                    tutors[session.tutor].push(session);
+                });
+
+                for (let tutor in tutors) {
+                    html += `<p>Tutor: ${tutor}</p>`;
+                    tutors[tutor].forEach(session => {
+                        html += `<p>Day / Start Duration: ${session.dayStartDuration}</p>`;
+                        html += `<button class="room-button" onclick="selectOption('${module["module code"]} ${module["module name"]}\\n${session.dayStartDuration.replace('\n', ' ')}\\n${session.tutor}\\n${session.room}')">${session.room}</button>`;
+                    });
+                }
+                html += '</details>';
+            }
+            html += '</details>'; // Close module code
+        }
+        html += '</details>'; // Close faculty
+    }
+
+    // Append the generated HTML to the options container
+    optionsContainer.innerHTML = html;
+
+    // Add the "Return" button
+    const returnButton = document.createElement('button');
+    returnButton.className = "option-button return-button";
+    returnButton.innerText = "Return";
+    returnButton.onclick = goBack;
+    optionsContainer.appendChild(returnButton);
 }
 
 function loadEventsOptions() {
@@ -263,7 +436,9 @@ function selectOption(option) {
         if(option === "Events"){
             loadEventsOptions();
         }else if(option === "Navigation"){
-            loadNavOptions()
+            loadNavOptions();
+        }else if(option === "Course"){
+            loadCourseOptions();
         }
     }, 500);
 }
@@ -329,6 +504,23 @@ function botResponse(userInput){
 
                 chatboxBody.prepend(messageDiv);
                 messageDiv.scrollIntoView({ block: "start", behavior: "smooth" });
+
+                var xhr2 = new XMLHttpRequest();
+                xhr2.open("GET", "/get_stored_data", true);
+                xhr2.onreadystatechange = function () {
+                    if (xhr.readyState == 4 && xhr.status == "200") {
+                        var storedData = JSON.parse(xhr2.responseText);
+                        // Use the retrieved data in your JavaScript code
+                        if(storedData.current == 2){
+                            if(storedData.nav_ans.length == 1){
+                                loadNavOptions();
+                            }else{
+                                loadCourseOptions();
+                            }
+                        }
+                    }
+                };
+                xhr2.send();
             }
         }
     }

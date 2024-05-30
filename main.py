@@ -3,6 +3,7 @@ import os
 import random
 import math
 import numpy as np
+import pandas as pd
 import pygame
 import csv
 import heapq
@@ -365,4 +366,28 @@ def main():
         counter -= 1
 
 
-main()
+#main()
+def read_map_data():
+    # Read the Database
+    map_database = pd.read_csv('Database - Database.csv')
+    # Rename 'Room/Facilities' to 'room'
+    map_database = map_database.rename(columns={'Room/Facilities': 'room'})
+    # Select only the columns you want
+    map_database = map_database[['Faculty', 'Block', 'Floor', 'room']]
+    # Convert column names to lowercase
+    map_database.columns = map_database.columns.str.lower()
+    # Convert the DataFrame to JSON
+    map_data = map_database.to_dict(orient='records')
+    return map_data
+
+
+map_data = read_map_data()
+
+print(map_data)
+def get_block_and_floor(room):
+    for data in map_data:
+        if data['room'].lower().strip() == room.lower().strip():
+            return data['block'].lower().strip(), data['floor'].lower().strip()
+    return None, None
+
+print(get_block_and_floor("Lecture Hall 1"))

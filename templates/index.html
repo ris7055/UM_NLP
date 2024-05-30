@@ -14,6 +14,7 @@
     <script>
         var nav = '{{ data.map_data | tojson | safe }}';
         var eve = '{{ data.event_data | tojson | safe }}';
+        var course = '{{ data.course_data | tojson | safe }}';
     </script>
 </head>
 <body>
@@ -45,6 +46,7 @@
                     </div>
                     <div class="chatbox-selection">
                         <button class="chatbox-option" onclick="selectOption('Navigation')">Navigation</button>
+                        <button class="chatbox-option" onclick="selectOption('Course')">Course</button>
                         <button class="chatbox-option" onclick="selectOption('Events')">Events</button>
                     </div>
                     <div id="chatbox-options" class="options-container">

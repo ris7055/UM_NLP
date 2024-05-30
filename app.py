@@ -106,6 +106,7 @@ def get_response(userText):
                 response_list.append(
                     "I am sorry, this location is invalid. Can u say again where are you going to?")
         else:
+            session['questions_asked'] -= 1
             response_list.append("I am sorry. I cannot understand what you mean.")
     elif userText.lower().strip() == "return":
         session['questions_asked'] = 0

@@ -2,13 +2,13 @@ import base64
 import os
 import re
 import pandas as pd
-from flask_session import Session  # Server-side sessions
-from flask import Flask, request, send_file, render_template, session
+#from flask_session import Session  # Server-side sessions
+from flask import Flask, request, send_file, render_template#, session
 import nav_algo as n
 
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
+#Session(app)
 
 # Read the Database
 map_database = pd.read_csv('Database - Database.csv')
@@ -29,6 +29,7 @@ event_database.columns = event_database.columns.str.lower()
 event_data = event_database.to_dict(orient='records')
 
 connections_words = ["First", "Next", "Then", "After that", "Lastly"]
+session = {}
 
 
 @app.route('/', methods=['GET', 'POST'])

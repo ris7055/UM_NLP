@@ -19,9 +19,13 @@
 </head>
 <body>
     <div class="content-md-lg py-3">
-        <div class="col-lg-8 col-md-10 col-sm-12 col-12 mx-auto">
-            <div class="page-title">Chatbox UI using HTML, CSS, and JavaScript</div>
-            <hr style="margin:auto; width:25px" class="border-light opacity-100">
+        <div class="col-lg-8 col-md-10 col-sm-12 col-12 mx-auto text-center" id="page_title-container">
+            <div class="page-title">CSNavBOT a chatbot UI using HTML, CSS, and JavaScript
+                <hr style="margin:auto; width:25px" class="border-light opacity-100">
+                <p class="spaced-paragraph">Welcome to our CSNavBot!</p>
+                <p class="spaced-paragraph">Hope this platform may help you to reach your destination in</p>
+                <p class="spaced-paragraph">Faculty of Computer Science and Information Technology [FSKTM]</p>
+            </div>
         </div>
         <!-- Chatbox Wrapper -->
         <div id="chatbox-wrapper">
@@ -62,6 +66,7 @@
                     </div>
                 </div>
             </div>
+            <div class="bottom-caption"><p>Please click the given chat button to explore! ->->->->->->->->->->->-></p></div>
         </div>
         <!-- Chatbox Wrapper -->
         <script src="{{ url_for('static', filename='script.js')}}"></script>

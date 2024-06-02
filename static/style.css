@@ -25,6 +25,25 @@ html{
 
 body{
     background-color: #282A3A;
+    background-image: url('/static/fsktm_bg_ori.png'); /* Update the path if needed */
+    background-size: cover;
+    background-position: center;
+}
+
+.content-md-lg py-3{
+    position: relative;
+}
+
+#page_title-container{
+    position:absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+    background-color: rgba(0,0,0,0.6);
 }
 
 .page-title{
@@ -33,7 +52,15 @@ body{
     color: #fff;
     letter-spacing: 3px;
     font-family: var(--secular-font);
-    text-align: center;
+    text-shadow: 0px 0px 3px #2020208c;
+}
+
+.spaced-paragraph{
+    font-family: var(--space-mono-font);
+    font-size: 1rem;
+    font-weight: 300;
+    color: #fff;
+    letter-spacing: 2px;
     text-shadow: 0px 0px 3px #2020208c;
 }
 
@@ -172,10 +199,12 @@ details {
     padding: 5px;
     margin-bottom: 5px;
 }
+
 summary {
     font-weight: bold;
     cursor: pointer;
 }
+
 .room-button {
     display: block;
     text-align: center;
@@ -188,6 +217,7 @@ summary {
     text-decoration: none;
     color: black;
 }
+
 .room-button:hover {
     background-color: #e0e0e0;
 }
@@ -207,6 +237,7 @@ summary {
     width: var(--chatbox-width);
     height: var(--chatbox-height);
 }
+
 #chatbox-wrapper #chatbox.closing{
     width: var(--chatbox-width);
     height: var(--chatbox-height);
@@ -220,12 +251,15 @@ summary {
     transform: translateY(100%);
     transition: transform ease-in-out .5s;
 }
+
 #chatbox-wrapper #chatbox.show .chatbox-dialog{
     transform: translateY(0%);
 }
+
 #chatbox-wrapper #chatbox.closing .chatbox-dialog{
     transform: translateY(100%);
 }
+
 #chatbox-wrapper #chatbox .chatbox-header{
     flex-shrink: 1;
     padding: .5em .75em;
@@ -235,6 +269,7 @@ summary {
     background: #0da0f5;
     color:#fff;
 }
+
 #chatbox-wrapper #chatbox .chatbox-close{
     background: transparent;
     outline: unset;
@@ -242,11 +277,13 @@ summary {
     padding: 5px;
     line-height: 10px;
 }
+
 #chatbox-wrapper #chatbox .chatbox-close span{
     font-size: 10px;
     font-weight: 600;
     color:#fff;
 }
+
 #chatbox-wrapper #chatbox .chatbox-body{
     flex-grow: 1;
     padding: .5em .75em;
@@ -364,6 +401,7 @@ summary {
     line-height: 12px;
     border: none;
 }
+
 #chatbox-wrapper #chatbox .chatbox-footer .chatbox-btn-wrapper #chatbox-send-btn span{
     font-size: .8rem;
     color: #fff;
@@ -386,5 +424,21 @@ summary {
     max-height: 90%;
 }
 
+.spaced-paragraph {
+    margin-bottom: 20px; /* Adjust the value as needed */
+}
 
+.bottom-caption {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    text-align: center;
+    font-size: 16px;
+    padding: 10px;
+    border-width: 1px;
+    color: white;
+}
 
+.bottom-caption > p {
+    margin: 20px;
+}

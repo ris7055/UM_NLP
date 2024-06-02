@@ -2,6 +2,8 @@ import glob
 import os
 import random
 import math
+
+import gspread as gspread
 import numpy as np
 import pandas as pd
 import pygame
@@ -35,7 +37,8 @@ def astar(start, start_floor, goal, goal_floor, is_OKU):
                 for coord in eval(current_coord):
                     for next_position in next_dict:
                         if goal_floor in list(next_position.keys())[0]:
-                            nearest_coords.append((list(next_position.values())[0], heuristic(start, coord), goal_floor, coord, transition_key))
+                            nearest_coords.append((list(next_position.values())[0], heuristic(start, coord), goal_floor,
+                                                   coord, transition_key))
 
         if nearest_coords:
             # Sort the list by the heuristic value and get the coordinate with the smallest heuristic value
@@ -60,7 +63,8 @@ def astar(start, start_floor, goal, goal_floor, is_OKU):
                     for coord in eval(current_coord):
                         for next_position in next_dict:
                             # Check if goal_floor is bottom or top
-                            next_block, next_floor = list(next_position.keys())[0][0], int(list(next_position.keys())[0][2])
+                            next_block, next_floor = list(next_position.keys())[0][0], int(
+                                list(next_position.keys())[0][2])
                             next_coord = list(next_position.values())[0]
                             if goal_block != current_block:
                                 if next_block == goal_block:
@@ -73,7 +77,8 @@ def astar(start, start_floor, goal, goal_floor, is_OKU):
                                         # ignore this transition
                                         continue
                             nearest_coords.append(
-                                (next_coord, heuristic(start, coord), list(next_position.keys())[0][:3], coord, transition_key))
+                                (next_coord, heuristic(start, coord), list(next_position.keys())[0][:3], coord,
+                                 transition_key))
 
             if len(to_next_block_list) > 0:
                 nearest_coords = to_next_block_list
@@ -233,8 +238,11 @@ def create_label_map(label_list, room_name_list):
 
 def draw_arrow(surface, color, start, end):
     pygame.draw.line(surface, color, start, end, 2)
-    rotation = math.degrees(math.atan2(start[1]-end[1], end[0]-start[0]))+90
-    pygame.draw.polygon(surface, color, ((end[0]+5*math.sin(math.radians(rotation)), end[1]+5*math.cos(math.radians(rotation))), (end[0]+5*math.sin(math.radians(rotation-120)), end[1]+5*math.cos(math.radians(rotation-120))), (end[0]+5*math.sin(math.radians(rotation+120)), end[1]+5*math.cos(math.radians(rotation+120)))))
+    rotation = math.degrees(math.atan2(start[1] - end[1], end[0] - start[0])) + 90
+    pygame.draw.polygon(surface, color, (
+    (end[0] + 5 * math.sin(math.radians(rotation)), end[1] + 5 * math.cos(math.radians(rotation))),
+    (end[0] + 5 * math.sin(math.radians(rotation - 120)), end[1] + 5 * math.cos(math.radians(rotation - 120))),
+    (end[0] + 5 * math.sin(math.radians(rotation + 120)), end[1] + 5 * math.cos(math.radians(rotation + 120)))))
 
 
 def main():
@@ -321,7 +329,7 @@ def main():
     for f in files:
         os.remove(f)
 
-    font = pygame.font.SysFont(None, 5*TILE_SIZE)
+    font = pygame.font.SysFont(None, 5 * TILE_SIZE)
     counter = len(paths)
 
     for path in paths:
@@ -355,39 +363,17 @@ def main():
                         center_x = 1 * TILE_SIZE
                     elif center_x <= place[1].min() * TILE_SIZE:
                         center_x = (place[1].min() + 1) * TILE_SIZE
-                    center_y = ((place[0].min() + place[0].max()) / 2 * TILE_SIZE) - (len(lab_split_list) * TILE_SIZE) + (3 * TILE_SIZE * t_count)
+                    center_y = ((place[0].min() + place[0].max()) / 2 * TILE_SIZE) - (
+                                len(lab_split_list) * TILE_SIZE) + (3 * TILE_SIZE * t_count)
                     if center_y <= 0:
                         center_y = 1 * TILE_SIZE
 
                     surface.blit(text, (int(center_x), int(center_y)))
                     t_count += 1
 
-        pygame.image.save(surface, 'path/'+f'{counter}.png')
+        pygame.image.save(surface, 'path/' + f'{counter}.png')
         counter -= 1
 
 
-#main()
-def read_map_data():
-    # Read the Database
-    map_database = pd.read_csv('Database - Database.csv')
-    # Rename 'Room/Facilities' to 'room'
-    map_database = map_database.rename(columns={'Room/Facilities': 'room'})
-    # Select only the columns you want
-    map_database = map_database[['Faculty', 'Block', 'Floor', 'room']]
-    # Convert column names to lowercase
-    map_database.columns = map_database.columns.str.lower()
-    # Convert the DataFrame to JSON
-    map_data = map_database.to_dict(orient='records')
-    return map_data
+# main()
 
-
-map_data = read_map_data()
-
-print(map_data)
-def get_block_and_floor(room):
-    for data in map_data:
-        if data['room'].lower().strip() == room.lower().strip():
-            return data['block'].lower().strip(), data['floor'].lower().strip()
-    return None, None
-
-print(get_block_and_floor("Lecture Hall 1"))

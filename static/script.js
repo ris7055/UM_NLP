@@ -8,10 +8,19 @@ const optionsContainer = document.getElementById('chatbox-options');
 var resizeHandle = document.getElementById("resize_handler");
 
 var nav_options = JSON.parse(nav)
+eve = eve.replaceAll("\n", "\\n");
+eve = eve.replaceAll("\'", "\"");
 var events_options = JSON.parse(eve)
 course = course.replaceAll("\n", "\\n");
 course = course.replaceAll("\'", "\"");
 var course_options = JSON.parse(course)
+
+function addSpaceBeforeAmPm(timeString) {
+    // Ensure there is exactly one space before "AM" or "PM"
+    return timeString.replace(/(\s*)(AM|PM)/gi, function(match, p1, p2) {
+        return ' ' + p2;
+    });
+}
 
 function loadNavOptions(){
     nav_options.sort((a, b) => {
@@ -213,6 +222,7 @@ function loadCourseOptions(){
         // If module code is the same, sort by occurrence
         return a["occurrence"] - b["occurrence"];
     });
+
     displayCourseOptions(course_options)
 }
 
@@ -310,8 +320,46 @@ function displayCourseOptions(OPTIONS){
 }
 
 function loadEventsOptions() {
-    // After loading, sort the options by the time column
-    events_options.sort((a, b) => new Date(a.time) - new Date(b.time));
+    // After loading, sort the options by the date and time columns
+    events_options.sort((a, b) => {
+        // Extract the first date and time from the ranges
+        let aDateParts = a.date.split('-')[0].trim().split("/") || new Date().toLocaleDateString();
+        let aTime = a.time.split('-')[0].trim().toUpperCase()|| new Date().toLocaleDateString();
+        let bDateParts = b.date.split('-')[0].trim().split("/") || new Date().toLocaleDateString();
+        let bTime = b.time.split('-')[0].trim().toUpperCase() || new Date().toLocaleDateString();
+
+        let aDate = `${aDateParts[1]}/${aDateParts[0]}/20${aDateParts[2]}`;
+        let bDate = `${bDateParts[1]}/${bDateParts[0]}/20${bDateParts[2]}`;
+
+        aTime = aTime.replace('.', ':');
+        bTime = bTime.replace('.', ':');
+
+        // Check if time contains ':'
+        if (!bTime.includes(':')) {
+            // Insert ':00' before 'am' or 'pm'
+            bTime = bTime.replace(/(\s*)(AM|PM)/, ':00 $2');
+        }
+
+        // Check if time contains ':'
+        if (!aTime.includes(':')) {
+            // Insert ':00' before 'am' or 'pm'
+            aTime = aTime.replace(/(\s*)(AM|PM)/, ':00 $2');
+        }
+        aTime = addSpaceBeforeAmPm(aTime);
+        bTime = addSpaceBeforeAmPm(bTime);
+
+        var aDateTime = new Date(aDate+" "+aTime).getTime();
+        var bDateTime = new Date(bDate+" "+bTime).getTime();
+
+        // Get current date and time
+        var now = new Date().getTime();
+
+        // Compare the Date objects only if they are later or equal to today
+        if (aDateTime >= now && bDateTime >= now) {
+            return aDateTime - bDateTime;
+        }
+    });
+
     displayEventsOptions(events_options);
 }
 
@@ -324,8 +372,10 @@ function displayEventsOptions(OPTIONS) {
     OPTIONS.forEach(option => {
         const optionElement = document.createElement('button');
         optionElement.className = "option-button"
-        optionElement.innerText = option.name; // Use other properties like time, venue, etc., as needed
-        optionElement.onclick = () => selectOption(option.name);
+        txt = option.name.replaceAll("__q__", "'")
+        txt = txt.replaceAll("__q2__", '"')
+        optionElement.innerText = txt;
+        optionElement.onclick = () => selectOption(option.name.replaceAll("__q__", "'").replaceAll("__q2__", '"'));
         optionsContainer.appendChild(optionElement);
     });
     // Add the "Return" button
@@ -448,6 +498,7 @@ function isDataUrl(s) {
 }
 
 function botResponse(userInput){
+    chatBoxSendMessage.disabled = true;
     var xhr = new XMLHttpRequest();
     userInput = userInput.replaceAll('\n', '__n__')
     xhr.open("GET", "/get?msg=" + userInput, true);
@@ -523,6 +574,7 @@ function botResponse(userInput){
                 xhr2.send();
             }
         }
+        chatBoxSendMessage.disabled = false;
     }
     xhr.send();
 }

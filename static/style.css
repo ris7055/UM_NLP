@@ -34,6 +34,26 @@ body{
     position: relative;
 }
 
+.github-button {
+    background-color: #333;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    transition-duration: 0.4s;
+}
+
+.github-button:hover {
+    background-color: #4CAF50;
+    color: white;
+}
+
 #page_title-container{
     position:absolute;
     top: 50%;
@@ -66,6 +86,44 @@ body{
 
 .border-dark-subtle{
     border-color: var(--border-dark-subtle) !important;
+}
+
+.introduction-section {
+    text-align: left;
+    font-size: 0.9em; /* Adjust the font size as needed */
+    padding: 20px; /* Adds padding around the text */
+}
+
+.image-blocks {
+    display: flex;
+    justify-content: space-around; /* This will space out your images evenly */
+    margin-top: 20px; /* Adds space above the image blocks */
+}
+
+.image-block {
+    width: 30%; /* Adjust the width as needed */
+    border: 1px solid #ddd; /* Adds a border around the image block */
+    padding: 10px; /* Adds padding inside the image block */
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2); /* Adds a subtle shadow effect */
+    text-align: center; /* Centers the text below the image */
+    transition: transform 0.3s ease; /* Adds a smooth transition effect */
+}
+
+.image-block:hover {
+    transform: scale(1.05); /* Slightly enlarges the block on hover */
+}
+
+.image-block img {
+    width: 100%; /* Makes the image fill the block */
+    height: auto; /* Keeps the image aspect ratio */
+}
+
+.image-block p {
+    margin:auto; /* Adds space between the image and the text */
+}
+
+.image-block a {
+    color: white;
 }
 
 /* Chatbox elements styles */

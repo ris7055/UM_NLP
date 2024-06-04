@@ -22,3 +22,4 @@ To start using CSNavBot, input your desired destination and current location wit
 ![Info2.png](static/Info2.png)
 ![Info3.png](static/Info3.png)
 ![Info4.png](static/Info4.png)
+![Info4.png](static/Info5.png)

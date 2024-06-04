@@ -4,14 +4,14 @@ import re
 import gspread as gspread
 import numpy as np
 import pandas as pd
-# from flask_session import Session  # Server-side sessions
-from flask import Flask, request, send_file, render_template  # , session
+#from flask_session import Session  # Server-side sessions
+from flask import Flask, request, send_file, render_template
 import nav_algo as n
 
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
 connections_words = ["First", "Next", "Then", "After that", "Lastly"]
-# Session(app)
+#Session(app)
 session = {}
 
 gc = gspread.service_account("./service_account.json")
@@ -21,7 +21,7 @@ sht = gc.open_by_key('1Xt_BFbm-I3LBzBLok2af2VGDCiVMSAoHBpYasnlLw5w')
 def read_map_data():
     # Read the Database
     map_database = pd.DataFrame(
-        sht.worksheet("Room Database").get_all_records())  # pd.read_csv('Database - Database.csv')
+        sht.worksheet("Room Database").get_all_records())
     # Rename 'Room/Facilities' to 'room'
     map_database = map_database.rename(columns={'Room/Facilities': 'room'})
     # Select only the columns you want
@@ -33,7 +33,7 @@ def read_map_data():
 
 def read_event_data(NameColOnly=False):
     # Read the Database
-    event_database = pd.DataFrame(sht.worksheet("Event Database").get_all_records())  # pd.read_csv('Database.csv')
+    event_database = pd.DataFrame(sht.worksheet("Event Database").get_all_records())
     # Convert column names to lowercase
     event_database.columns = event_database.columns.str.lower()
     event_database["name"] = event_database["name"].str.replace("'", "__q__")

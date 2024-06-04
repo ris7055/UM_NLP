@@ -7,6 +7,7 @@ import pandas as pd
 #from flask_session import Session  # Server-side sessions
 from flask import Flask, request, send_file, render_template
 import nav_algo as n
+from textblob import TextBlob
 
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -165,18 +166,44 @@ def get_response(userText):
 
     if session['questions_asked'] == 0 and userText.lower().strip() != "return":
         session['questions_asked'] += 1
-        if userText.lower() == "navigation":
+        # Analyze the sentiment of the user's input
+        blob = TextBlob(userText)
+        sentiment = blob.sentiment.polarity
+        if "navigation" in userText.lower() or "navigate" in userText.lower():
             session['current'] = 0
-            response_list.append("I am happy that I can help you in navigation. \n\nCan u tell me where are u going "
-                                 "to go? You can select ur destination from the selections below.")
-        elif userText.lower() == "events":
+            if sentiment > 0:
+                response_list.append("What's up bro! You want to navigate. Where would you like to go?")
+            elif sentiment < 0:
+                response_list.append(
+                    "I feel that you are in a negative mood. I will help you out in navigation. Please be happy. "
+                    "Where would you like to go?")
+            else:
+                response_list.append("I am happy that I can help you in navigation. \n\nCan u tell me where are u "
+                                     "going "
+                                     "to go? You can select ur destination from the selections below.")
+        elif "events" in userText.lower() or "event" in userText.lower():
             session['current'] = 1
-            response_list.append("I am happy that I can help you in events. \nWhat events are u interest in?\n You "
-                                 "can select one from the selections below.")
-        elif userText.lower() == "course":
+            if sentiment > 0:
+                response_list.append(
+                    "What's up bro! You're interested in events. Which event would you like to know about?")
+            elif sentiment < 0:
+                response_list.append(
+                    "I feel that you are in a negative mood. I will help you out in finding events. Please be happy. "
+                    "Which event would you like to know about?")
+            else:
+                response_list.append("I am happy that I can help you in events. \nWhat events are u interest in?\n You "
+                                     "can select one from the selections below.")
+        elif "course" in userText.lower() or "courses" in userText.lower():
             session['current'] = 2
-            response_list.append("I am happy that I can help you in course. \nWhat course u wish to know more?\n"
-                                 "You can select one from the selections below.")
+            if sentiment > 0:
+                response_list.append("What's up bro! You're asking about a course. Which course are you interested in?")
+            elif sentiment < 0:
+                response_list.append(
+                    "I feel that you are in a negative mood. I will help you out in finding courses. Please be happy. "
+                    "Which course are you interested in?")
+            else:
+                response_list.append("I am happy that I can help you in course. \nWhat course u wish to know more?\n"
+                                     "You can select one from the selections below.")
         elif session['current'] == 0:
             try:
                 faculty, block, floor, room = userText.split("\n")

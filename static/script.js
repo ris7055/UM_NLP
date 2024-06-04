@@ -23,6 +23,9 @@ function addSpaceBeforeAmPm(timeString) {
 }
 
 function loadNavOptions(){
+    [].forEach.call(document.querySelectorAll('.chatbox-selection'), function (el) {
+          el.style.display = 'none'
+        });
     nav_options.sort((a, b) => {
         if (a.faculty < b.faculty) return -1;
         if (a.faculty > b.faculty) return 1;
@@ -214,6 +217,9 @@ function filterCourseOptions() {
 }
 
 function loadCourseOptions(){
+    [].forEach.call(document.querySelectorAll('.chatbox-selection'), function (el) {
+          el.style.display = 'none'
+        });
     course_options.sort(function(a, b) {
         // Sort by module code
         var moduleCodeComparison = a["module code"].localeCompare(b["module code"]);
@@ -320,6 +326,9 @@ function displayCourseOptions(OPTIONS){
 }
 
 function loadEventsOptions() {
+    [].forEach.call(document.querySelectorAll('.chatbox-selection'), function (el) {
+          el.style.display = 'none'
+        });
     // After loading, sort the options by the date and time columns
     events_options.sort((a, b) => {
         // Extract the first date and time from the ranges
@@ -442,14 +451,18 @@ function appendMessage(){
     messageDiv.scrollIntoView({ block: "start", behavior: "smooth" });
     setTimeout(function() {
         botResponse(message);
-    }, 800);
+        if(message.toLowerCase().includes("events") || message.toLowerCase().includes("event")){
+            loadEventsOptions();
+        }else if(message.toLowerCase().includes("navigation")||message.toLowerCase().includes("navigate")){
+            loadNavOptions();
+        }else if(message.toLowerCase().includes("course")||message.toLowerCase().includes("courses")){
+            loadCourseOptions();
+        }
+    }, 500);
 }
 
 // Chatbot Selection JavaScript
 function selectOption(option) {
-    [].forEach.call(document.querySelectorAll('.chatbox-selection'), function (el) {
-      el.style.display = 'none'
-    });
     // Create a new div for the message
     var messageDiv = document.createElement('div');
     messageDiv.className = 'chatbox-item chatbox-msg-receiver';

@@ -450,13 +450,17 @@ function appendMessage(){
     chatboxBody.prepend(messageDiv);
     messageDiv.scrollIntoView({ block: "start", behavior: "smooth" });
     setTimeout(function() {
-        botResponse(message);
-        if(message.toLowerCase().includes("events") || message.toLowerCase().includes("event")){
-            loadEventsOptions();
-        }else if(message.toLowerCase().includes("navigation")||message.toLowerCase().includes("navigate")){
-            loadNavOptions();
-        }else if(message.toLowerCase().includes("course")||message.toLowerCase().includes("courses")){
-            loadCourseOptions();
+        if(message.toLowerCase()===("return")){
+            goBack();
+        }else{
+            botResponse(message);
+            if(message.toLowerCase().includes("events") || message.toLowerCase().includes("event")){
+                loadEventsOptions();
+            }else if(message.toLowerCase().includes("navigation")||message.toLowerCase().includes("navigate")){
+                loadNavOptions();
+            }else if(message.toLowerCase().includes("course")||message.toLowerCase().includes("courses")){
+                loadCourseOptions();
+            }
         }
     }, 500);
 }

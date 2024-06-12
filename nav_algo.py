@@ -4,12 +4,14 @@ import random
 import math
 import re
 import numpy as np
-import pandas as pd
 import pygame
-import csv
 import heapq
 import ast
+import gspread as gspread
 
+
+gc = gspread.service_account("./service_account.json")
+sht = gc.open_by_key('1Xt_BFbm-I3LBzBLok2af2VGDCiVMSAoHBpYasnlLw5w')
 
 def distance(start, goal):
     return math.sqrt((start[0] - goal[0]) ** 2 + (start[1] - goal[1]) ** 2)
@@ -139,72 +141,58 @@ def astar(start, start_floor, goal, goal_floor, is_OKU):
 
 def get_maze(floor):
     floor_map_dict = {
-        'agf': 'AGF.csv',
-        'af1': 'AF1.csv',
-        'af2': 'AF2.csv',
-        'bgf': 'BGF.csv',
-        'bf1': 'BF1.csv',
-        'bf2': 'BF2.csv'
+        'agf': 'AGF',
+        'af1': 'AF1',
+        'af2': 'AF2',
+        'bgf': 'BGF',
+        'bf1': 'BF1',
+        'bf2': 'BF2'
     }
-    file = floor_map_dict[floor]
-    with open(file, 'r') as f:
-        reader = csv.reader(f)
-        maze = []
-        for line in reader:
-            maze.append(line)
-        return maze
+    return sht.worksheet(floor.upper()).get_all_values()
+    # Convert records to a list of lists (similar to reading a CSV)
 
 
 def read_database():
-    with open('Database - Database.csv', 'r') as file:
-        # Create a CSV reader
-        reader = csv.reader(file)
+    # Get the first sheet
+    worksheet1 = sht.worksheet('Room Database')
+    room_facilities_records = worksheet1.get_all_records()
 
-        room_facilities_dict = {}
-        # Loop over each row in the CSV
-        next(reader)
+    room_facilities_dict = {}
+    for record in room_facilities_records:
+        temp_dict = {
+            'block': record['Block'],
+            'floor': record['Floor'],
+            'label': record['Label'],
+            'color code': record['Color Code'],
+            'coordinate': record['Coordinate']
+        }
+        key = (record['Block'] + record['Floor'] + " " + record['Room/Facilities']).lower().strip()
+        room_facilities_dict[key] = temp_dict
 
-        for row in reader:
-            # Faculty,Block,Floor,Room/Facilities,Label,Color Code
-            # Append each column to the respective list
-            temp_dict = {
-                'block': row[1],
-                'floor': row[2],
-                'label': row[4],
-                'color code': row[5],
-                'coordinate': row[6]
-            }
-            key = (row[1] + row[2] + " " + row[3]).lower().strip()
-            room_facilities_dict[key] = temp_dict
+    # Get the second sheet
+    worksheet2 = sht.worksheet('Transition Database')
+    transition_records = worksheet2.get_all_records()
 
-    with open('Database - Database2.csv', 'r') as file:
-        # Create a CSV reader
-        reader = csv.reader(file)
+    transition_dict = {}
+    for record in transition_records:
+        block = record['Block']
+        floor = record['Floor']
+        start_location = record['Start Location']
+        start_key = f'{block.lower()}{floor.lower()} {start_location.lower()}'.strip()
 
-        transition_dict = {}
-        # Loop over each row in the CSV
-        next(reader)
+        transitions = eval(record['Transition'].replace('{\'', '{"').replace('\':', '":'))
 
-        for row in reader:  # Skip header
-            block = row[0]
-            floor = row[1]
-            start_location = row[2]
-            start_key = f'{block.lower()}{floor.lower()} {start_location.lower()}'.strip()
+        trans_list = []
+        for t in transitions:
+            key, value = list(t.items())[0]
+            combined_key = (key + " " + value).lower().strip()
+            destination_coordinates = room_facilities_dict[combined_key]["coordinate"]
 
-            transitions = eval(row[3].replace('{\'', '{"').replace('\':', '":'))
+            if start_key in room_facilities_dict:
+                start_coordinates = room_facilities_dict[start_key]['coordinate']
+                trans_list.append({combined_key: destination_coordinates})
 
-            trans_list = []
-            for t in transitions:
-                key, value = list(t.items())[0]
-                combined_key = (key + " " + value).lower().strip()
-                destination_coordinates = room_facilities_dict[combined_key]["coordinate"]
-
-                if start_key in room_facilities_dict:
-                    # Find the coordinates for the start location
-                    start_coordinates = room_facilities_dict[start_key]['coordinate']
-                    trans_list.append({combined_key: destination_coordinates})
-
-            transition_dict[start_key] = {start_coordinates: trans_list}
+        transition_dict[start_key] = {start_coordinates: trans_list}
 
     return room_facilities_dict, transition_dict
 

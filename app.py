@@ -1,42 +1,48 @@
 import base64
 import os
 import re
+import gspread as gspread
+import numpy as np
 import pandas as pd
 #from flask_session import Session  # Server-side sessions
-from flask import Flask, request, send_file, render_template#, session
+from flask import Flask, request, send_file, render_template
 import nav_algo as n
+from textblob import TextBlob
 
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'filesystem'
-#Session(app)
-
-
 connections_words = ["First", "Next", "Then", "After that", "Lastly"]
+#Session(app)
 session = {}
+
+gc = gspread.service_account("./service_account.json")
+sht = gc.open_by_key('1Xt_BFbm-I3LBzBLok2af2VGDCiVMSAoHBpYasnlLw5w')
 
 
 def read_map_data():
     # Read the Database
-    map_database = pd.read_csv('Database - Database.csv')
+    map_database = pd.DataFrame(
+        sht.worksheet("Room Database").get_all_records())
     # Rename 'Room/Facilities' to 'room'
     map_database = map_database.rename(columns={'Room/Facilities': 'room'})
     # Select only the columns you want
     map_database = map_database[['Faculty', 'Block', 'Floor', 'room']]
     # Convert column names to lowercase
     map_database.columns = map_database.columns.str.lower()
-    # Convert the DataFrame to JSON
-    map_data = map_database.to_dict(orient='records')
-    return map_data
+    return map_database.to_dict(orient='records')
 
 
-def read_event_data():
+def read_event_data(NameColOnly=False):
     # Read the Database
-    event_database = pd.read_csv('Database.csv')
+    event_database = pd.DataFrame(sht.worksheet("Event Database").get_all_records())
     # Convert column names to lowercase
     event_database.columns = event_database.columns.str.lower()
-    # Convert the DataFrame to JSON
-    event_data = event_database.to_dict(orient='records')
-    return event_data
+    event_database["name"] = event_database["name"].str.replace("'", "__q__")
+    event_database["name"] = event_database["name"].str.replace('"', "__q2__")
+    if NameColOnly:
+        return event_database[["name", "date", "time"]].to_dict(orient='records')
+    else:
+        return event_database.to_dict(orient='records')
 
 
 def read_course_data():
@@ -50,17 +56,23 @@ def read_course_data():
         'M CCNA': 'CCNA Lab',
         'BT': 'Tutorial Room'
     }
-
+    pd.set_option('future.no_silent_downcasting', True)
+    expected_headers = ['Module Code', 'Module Name', 'Occurrence', 'Academic Year', 'Period Slot',
+                        'Day / Start Duration ', 'Tutor', 'Location', 'Room']
     # Read the Database
-    course_database = pd.read_csv('Database - STU_MVT4.csv', skiprows=11)
-    course_database = course_database.loc[:, ~course_database.columns.str.startswith('Unnamed')]
-    course_database = course_database.drop(['Target', 'Activity', 'Weeks'], axis=1)
-    course_database['Module Code'] = course_database['Module Code'].ffill()
-    for column in course_database.columns:
-        course_database[column] = course_database.groupby('Module Code')[column].apply(lambda x: x.ffill()).reset_index(
-            drop=True)
+    course_database = pd.DataFrame.from_records(sht.worksheet("STU_MVT4")
+                                                .get_all_records(head=11, expected_headers=expected_headers))
+    course_database = course_database[expected_headers]
+    # Replace placeholders with np.nan
+    course_database = course_database.replace('', np.nan)
+
+    course_database['Module Code'] = course_database['Module Code'].ffill(axis=0)
+
+    course_database = course_database[course_database['Module Code'].str.startswith('W')]
+
+    course_database = course_database.groupby('Module Code').apply(lambda x: x.ffill())
+
     course_database = course_database.dropna()
-    course_database = course_database[course_database['Module Code'].str.startswith('WI')]
 
     course_database['Faculty'] = course_database['Room'].apply(
         lambda x: 'Computer Science and Information Technology' if 'FSKTM' in x else '')
@@ -76,10 +88,8 @@ def read_course_data():
 
     # Replace unescaped double quotes in the 'tutor' column
     course_database['tutor'] = course_database['tutor'].str.replace("\'", "\\'")
-    course_database = course_database.drop("mav name", axis=1)
     # Convert the DataFrame to JSON
-    course_data = course_database.to_dict(orient='records')
-    return course_data
+    return course_database.to_dict(orient='records')
 
 
 map_data = read_map_data()
@@ -90,7 +100,7 @@ course_data = read_course_data()
 @app.route('/', methods=['GET', 'POST'])
 def home():
     data = {"map_data": map_data,
-            "event_data": event_data,
+            "event_data": read_event_data(True),
             "course_data": course_data}
     return render_template('index.html', data=data)
 
@@ -127,8 +137,10 @@ def location_exists(faculty, block, floor, room):
 def event_exists(name):
     # Iterate over each event in the list
     for event in event_data:
-        # Check if the name, time, venue, and description match the user's input
-        if event["name"] == name:
+        # Check if the name, time, venue, and description match the user's input'
+        event_name = event["name"].replace("__q__","'")
+        event_name = event_name.replace("__q2__",'"')
+        if event_name.strip().lower() == name.strip().lower():
             return True, event
     return False, None
 
@@ -154,18 +166,44 @@ def get_response(userText):
 
     if session['questions_asked'] == 0 and userText.lower().strip() != "return":
         session['questions_asked'] += 1
-        if userText.lower() == "navigation":
+        # Analyze the sentiment of the user's input
+        blob = TextBlob(userText)
+        sentiment = blob.sentiment.polarity
+        if "navigation" in userText.lower() or "navigate" in userText.lower():
             session['current'] = 0
-            response_list.append("I am happy that I can help you in navigation. \n\nCan u tell me where are u going "
-                                 "to go? You can select ur destination from the selections below.")
-        elif userText.lower() == "events":
+            if sentiment > 0:
+                response_list.append("What's up bro! You want to navigate. Where would you like to go?")
+            elif sentiment < 0:
+                response_list.append(
+                    "I feel that you are in a negative mood. I will help you out in navigation. Please be happy. "
+                    "Where would you like to go?")
+            else:
+                response_list.append("I am happy that I can help you in navigation. \n\nCan u tell me where are u "
+                                     "going "
+                                     "to go? You can select ur destination from the selections below.")
+        elif "events" in userText.lower() or "event" in userText.lower():
             session['current'] = 1
-            response_list.append("I am happy that I can help you in events. \nWhat events are u interest in?\n You "
-                                 "can select one from the selections below.")
-        elif userText.lower() == "course":
+            if sentiment > 0:
+                response_list.append(
+                    "What's up bro! You're interested in events. Which event would you like to know about?")
+            elif sentiment < 0:
+                response_list.append(
+                    "I feel that you are in a negative mood. I will help you out in finding events. Please be happy. "
+                    "Which event would you like to know about?")
+            else:
+                response_list.append("I am happy that I can help you in events. \nWhat events are u interest in?\n You "
+                                     "can select one from the selections below.")
+        elif "course" in userText.lower() or "courses" in userText.lower():
             session['current'] = 2
-            response_list.append("I am happy that I can help you in course. \nWhat course u wish to know more?\n"
-                                 "You can select one from the selections below.")
+            if sentiment > 0:
+                response_list.append("What's up bro! You're asking about a course. Which course are you interested in?")
+            elif sentiment < 0:
+                response_list.append(
+                    "I feel that you are in a negative mood. I will help you out in finding courses. Please be happy. "
+                    "Which course are you interested in?")
+            else:
+                response_list.append("I am happy that I can help you in course. \nWhat course u wish to know more?\n"
+                                     "You can select one from the selections below.")
         elif session['current'] == 0:
             try:
                 faculty, block, floor, room = userText.split("\n")
@@ -220,10 +258,11 @@ def get_response(userText):
         elif session['current'] == 1:
             is_event, event_details = event_exists(userText)
             if is_event:
-                response_list.append("Event Name: " + event_details["name"] + "\n"\
-                "Time: " + event_details["time"] + "\n"\
-                "Venue: " + event_details["venue"] + "\n"\
-                "Description: " + event_details["description"])
+                response_list.append("Event Name: " + event_details["name"] + "\n" + "Date: " + \
+                                     event_details["date"].upper() + "\n" + "Time: " + \
+                                     event_details["time"].upper() + "\n" + "Venue: " +
+                                     event_details["venue"] + "\n" + "Description: " + \
+                                     event_details["description"])
                 response_list.append("Any other events detail u like to know more?")
             else:
                 response_list.append("I am sorry, this event not exist. You can check out the events from selection "
@@ -284,18 +323,18 @@ def get_response(userText):
                 with open(os.path.join(image_dir, image_file), 'rb') as f:
                     image_data = f.read()
                     data_url = 'data:image/png;base64,' + base64.b64encode(image_data).decode()
-                    if counter == 0 and counter != len(floor_data)-1:
-                        response_list.append(connections_words[counter]+", you are at Block "+\
-                                             floor_data[counter][0].upper()+" Floor "+\
-                                             floor_data[counter][-2:].upper()+".")
-                    elif counter < len(floor_data)-1:
-                        response_list.append(connections_words[counter]+", go to Block "+\
-                                             floor_data[counter][0].upper()+" Floor "+\
-                                             floor_data[counter][-2:].upper()+".")
+                    if counter == 0 and counter != len(floor_data) - 1:
+                        response_list.append(connections_words[counter] + ", you are at Block " + \
+                                             floor_data[counter][0].upper() + " Floor " + \
+                                             floor_data[counter][-2:].upper() + ".")
+                    elif counter < len(floor_data) - 1:
+                        response_list.append(connections_words[counter] + ", go to Block " + \
+                                             floor_data[counter][0].upper() + " Floor " + \
+                                             floor_data[counter][-2:].upper() + ".")
                     else:
-                        response_list.append(connections_words[counter]+" you are at Block "+\
-                                             floor_data[counter][0].upper()+\
-                                             " Floor "+floor_data[counter][-2:].upper()+\
+                        response_list.append(connections_words[counter] + " you are at Block " + \
+                                             floor_data[counter][0].upper() + \
+                                             " Floor " + floor_data[counter][-2:].upper() + \
                                              ", Your destination is on this floor.")
                     counter += 1
                 response_list.append(data_url)
